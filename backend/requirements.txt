@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+aiofiles
+yt-dlp
+faster-whisper
+numpy
+supabase
+
