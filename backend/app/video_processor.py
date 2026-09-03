@@ -12,9 +12,10 @@ from .security import validate_video_url
 # PO-token requirements vary per client and change over time, so we fall
 # back through several combinations rather than giving up after one.
 _CLIENT_FALLBACKS = [
-    ["mweb", "ios", "android", "web"],
-    ["tv", "mweb", "android"],
-    ["ios"],
+    ["tv_embedded", "android_vr", "ios", "mweb"],
+    ["android", "ios", "web_safari"],
+    ["tv", "mweb", "web_creator"],
+    ["web", "mweb", "android"],
 ]
 
 
@@ -24,8 +25,8 @@ def _friendly_youtube_error(exc: Exception) -> str:
     if "Sign in" in msg or "not a bot" in msg or "cookie" in msg.lower():
         return (
             "YouTube is blocking this download because it suspects a bot "
-            "(this happens more often from server IPs). Add a cookies.txt file "
-            "(exported from a browser signed into YouTube) to the backend folder, "
+            "(this happens more often from server IPs). Please add a cookies.txt Secret File "
+            "(exported from a browser signed into YouTube) on Render at /etc/secrets/cookies.txt, "
             "or try again with a different video."
         )
     if "Private video" in msg:
@@ -50,15 +51,16 @@ def _download_video(url: str, dest_dir: Path) -> Path:
         "http_chunk_size": 10 * 1024 * 1024,
         "retries": 10,
         "socket_timeout": 15,
+        "source_address": "0.0.0.0",
         "nocheckcertificate": True,
         "js_runtimes": {"node": {}},
         "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Language": "en-US,en;q=0.9",
         },
     }
-    if COOKIE_FILE.exists():
+    if COOKIE_FILE and COOKIE_FILE.exists() and COOKIE_FILE.stat().st_size > 0:
         base_opts["cookiefile"] = str(COOKIE_FILE)
 
     info = None
@@ -157,13 +159,14 @@ def process_short_video(url: str, max_len: int = 30) -> dict:
         "quiet": True,
         "nocheckcertificate": True,
         "js_runtimes": {"node": {}},
+        "source_address": "0.0.0.0",
         "extractor_args": {
             "youtube": {
-                "player_client": ["mweb", "ios", "android", "web"],
+                "player_client": ["tv_embedded", "android_vr", "ios", "mweb"],
             }
         },
     }
-    if COOKIE_FILE.exists():
+    if COOKIE_FILE and COOKIE_FILE.exists() and COOKIE_FILE.stat().st_size > 0:
         info_opts["cookiefile"] = str(COOKIE_FILE)
 
     try:

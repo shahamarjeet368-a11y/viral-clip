@@ -55,16 +55,17 @@ def _download_youtube(url: str, project_id: str) -> Path:
         "nocheckcertificate": True,
         "socket_timeout": 15,
         "retries": 10,
+        "source_address": "0.0.0.0",
         "js_runtimes": {"node": {}},
         "concurrent_fragment_downloads": 8,
         "http_chunk_size": 10 * 1024 * 1024,
         "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Language": "en-US,en;q=0.9",
         },
     }
-    if COOKIE_FILE.exists():
+    if COOKIE_FILE and COOKIE_FILE.exists() and COOKIE_FILE.stat().st_size > 0:
         base_opts["cookiefile"] = str(COOKIE_FILE)
 
     last_exc: Exception | None = None

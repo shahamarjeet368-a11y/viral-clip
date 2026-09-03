@@ -21,23 +21,33 @@ for d in (STORAGE_DIR, UPLOADS_DIR, OUTPUTS_DIR, MUSIC_DIR):
 # 4. Fallback: YTDLP_COOKIES env var (creates BASE_DIR / "cookies.txt")
 
 _render_secret = Path("/etc/secrets/cookies.txt")
+_secret_dir = Path("/etc/secrets")
 _custom_cookie_path = os.environ.get("YTDLP_COOKIE_PATH") or os.environ.get("COOKIE_FILE_PATH")
 _local_cookies = BASE_DIR / "cookies.txt"
+_tmp_cookies = Path("/tmp/cookies.txt")
 
-if _render_secret.exists():
-    COOKIE_FILE = _render_secret
-elif _custom_cookie_path and Path(_custom_cookie_path).exists():
+COOKIE_FILE: Path = BASE_DIR / "cookies.txt"
+
+if _custom_cookie_path and Path(_custom_cookie_path).exists():
     COOKIE_FILE = Path(_custom_cookie_path)
+elif _render_secret.exists():
+    COOKIE_FILE = _render_secret
+elif _secret_dir.exists() and list(_secret_dir.glob("*cookie*")):
+    COOKIE_FILE = list(_secret_dir.glob("*cookie*"))[0]
 elif _local_cookies.exists():
     COOKIE_FILE = _local_cookies
+elif _tmp_cookies.exists():
+    COOKIE_FILE = _tmp_cookies
 else:
-    COOKIE_FILE = _local_cookies
     _cookies_env = os.environ.get("YTDLP_COOKIES")
     if _cookies_env:
-        try:
-            COOKIE_FILE.write_text(_cookies_env, encoding="utf-8")
-        except Exception as _e:
-            print(f"[Config] Warning: Could not write YTDLP_COOKIES to {COOKIE_FILE}: {_e}")
+        for target in (_tmp_cookies, _local_cookies):
+            try:
+                target.write_text(_cookies_env, encoding="utf-8")
+                COOKIE_FILE = target
+                break
+            except Exception as _e:
+                print(f"[Config] Warning: Could not write YTDLP_COOKIES to {target}: {_e}")
 
 MUSIC_TRACK_DURATION = 40  # seconds; looped by ffmpeg to cover the full clip length
 
