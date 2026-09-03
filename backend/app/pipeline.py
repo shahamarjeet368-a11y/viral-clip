@@ -70,7 +70,10 @@ def _download_youtube(url: str, project_id: str) -> Path:
 
     last_exc: Exception | None = None
     for clients in video_processor._CLIENT_FALLBACKS:
-        ydl_opts = {**base_opts, "extractor_args": {"youtube": {"player_client": clients}}}
+        if clients is not None:
+            ydl_opts = {**base_opts, "extractor_args": {"youtube": {"player_client": clients}}}
+        else:
+            ydl_opts = {**base_opts}
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])

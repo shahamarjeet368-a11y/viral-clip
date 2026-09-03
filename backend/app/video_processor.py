@@ -12,10 +12,10 @@ from .security import validate_video_url
 # PO-token requirements vary per client and change over time, so we fall
 # back through several combinations rather than giving up after one.
 _CLIENT_FALLBACKS = [
-    ["tv_embedded", "android_vr", "ios", "mweb"],
-    ["android", "ios", "web_safari"],
-    ["tv", "mweb", "web_creator"],
-    ["web", "mweb", "android"],
+    ["mweb", "ios", "android", "web"],
+    ["ios", "android"],
+    ["mweb", "android"],
+    None,
 ]
 
 
@@ -31,8 +31,12 @@ def _friendly_youtube_error(exc: Exception) -> str:
         )
     if "Private video" in msg:
         return "This video is private and can't be downloaded."
-    if "This video is unavailable" in msg:
-        return "This video is unavailable (removed, region-blocked, or age-restricted)."
+    if (
+        "unavailable" in msg.lower()
+        or "failed to extract" in msg.lower()
+        or "does not exist" in msg.lower()
+    ):
+        return "This video is unavailable (it may be deleted, private, region-blocked, or the URL is invalid)."
     return msg
 
 
@@ -66,7 +70,10 @@ def _download_video(url: str, dest_dir: Path) -> Path:
     info = None
     last_exc: Exception | None = None
     for clients in _CLIENT_FALLBACKS:
-        ydl_opts = {**base_opts, "extractor_args": {"youtube": {"player_client": clients}}}
+        if clients is not None:
+            ydl_opts = {**base_opts, "extractor_args": {"youtube": {"player_client": clients}}}
+        else:
+            ydl_opts = {**base_opts}
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
