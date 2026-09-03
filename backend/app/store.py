@@ -1,6 +1,7 @@
 import json
 import shutil
 import threading
+import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -15,6 +16,15 @@ from .supabase_client import (
 )
 
 DB_FILE = STORAGE_DIR / "db.json"
+
+# yt-dlp/transcribe progress hooks fire many times per second (more so with
+# concurrent_fragment_downloads). Each store.update() used to trigger a full
+# disk rewrite of the whole DB plus a synchronous Supabase network call,
+# serialized behind the store's single lock - so every progress tick stalled
+# the download itself waiting on disk+network I/O. Progress text is
+# ephemeral, so it's only persisted at most this often; real state changes
+# (status, clips, error) always sync immediately.
+PROGRESS_SYNC_THROTTLE_SEC = 2.0
 
 
 class Status(str, Enum):
@@ -106,6 +116,7 @@ class ProjectStore:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._projects: dict[str, Project] = {}
+        self._last_synced: dict[str, float] = {}
         self._load_all()
 
     def _load_all(self) -> None:
@@ -207,6 +218,14 @@ class ProjectStore:
                 return
             for key, value in kwargs.items():
                 setattr(project, key, value)
+
+            progress_only = set(kwargs) <= {"progress"}
+            now = time.monotonic()
+            if progress_only:
+                last = self._last_synced.get(project_id, 0.0)
+                if now - last < PROGRESS_SYNC_THROTTLE_SEC:
+                    return
+            self._last_synced[project_id] = now
             self._sync_project(project)
 
     def delete(self, project_id: str) -> bool:
@@ -214,6 +233,7 @@ class ProjectStore:
             project = self._projects.pop(project_id, None)
             if project is None:
                 return False
+            self._last_synced.pop(project_id, None)
             self._save_to_disk()
             delete_project_from_supabase(project_id)
 
