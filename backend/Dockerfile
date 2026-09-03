@@ -1,9 +1,10 @@
 FROM python:3.11-slim
 
-# Install system dependencies (FFmpeg & Git)
+# Install system dependencies (FFmpeg, Node.js & Git)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     git \
+    nodejs \
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 

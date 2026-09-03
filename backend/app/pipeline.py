@@ -41,7 +41,7 @@ def _download_youtube(url: str, project_id: str) -> Path:
         elif d["status"] == "finished":
             store.update(project_id, progress="Download complete, preparing video...")
 
-    ydl_opts = {
+    base_opts = {
         "outtmpl": str(out_path.with_suffix(".%(ext)s")),
         "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/b[height<=720]/18/best",
         "noplaylist": True,
@@ -52,25 +52,32 @@ def _download_youtube(url: str, project_id: str) -> Path:
         "socket_timeout": 15,
         "retries": 10,
         "js_runtimes": {"node": {}},
-        # Fragmented/DASH formats download several times faster in parallel
-        # instead of one fragment at a time; chunking also lets even a single
-        # progressive stream be pulled as parallel byte-range requests.
         "concurrent_fragment_downloads": 8,
         "http_chunk_size": 10 * 1024 * 1024,
         "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.5",
         },
-        # No forced player_client: pinning this to ["android", "ios"] made
-        # every download use YouTube's SABR-only-experiment clients (see
-        # https://github.com/yt-dlp/yt-dlp/issues/12482), which serves
-        # throttled/incomplete formats and was the main cause of slow
-        # downloads. Leaving it unset lets yt-dlp pick its current
-        # best-working client itself.
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+    if video_processor.COOKIE_FILE.exists():
+        base_opts["cookiefile"] = str(video_processor.COOKIE_FILE)
+
+    last_exc: Exception | None = None
+    for clients in video_processor._CLIENT_FALLBACKS:
+        ydl_opts = {**base_opts, "extractor_args": {"youtube": {"player_client": clients}}}
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            last_exc = None
+            break
+        except Exception as exc:
+            last_exc = exc
+            continue
+
+    if last_exc is not None:
+        raise RuntimeError(video_processor._friendly_youtube_error(last_exc)) from last_exc
+
     if not out_path.exists():
         candidates = list(UPLOADS_DIR.glob(f"{project_id}.*"))
         if not candidates:

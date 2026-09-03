@@ -44,6 +44,11 @@ _DEFAULT_ORIGINS = [
     "https://viral-clip-mu.vercel.app",
 ]
 _EXTRA_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+if "*" in _EXTRA_ORIGINS:
+    raise RuntimeError(
+        "ALLOWED_ORIGINS must not contain '*' - wildcard CORS origins are disabled. "
+        "Set a comma-separated list of exact origins instead (e.g. https://app.example.com)."
+    )
 
 if "*" in _EXTRA_ORIGINS or os.environ.get("ALLOWED_ORIGINS", "").strip() == "*":
     cors_origins = ["*"]

@@ -8,13 +8,42 @@ from .config import FFMPEG_BIN, UPLOADS_DIR
 from .security import validate_video_url
 
 
+# Client sets tried in order until one works. YouTube's anti-bot checks and
+# PO-token requirements vary per client and change over time, so we fall
+# back through several combinations rather than giving up after one.
+_CLIENT_FALLBACKS = [
+    ["mweb", "ios", "android", "web"],
+    ["tv", "mweb", "android"],
+    ["ios"],
+]
+
+COOKIE_FILE = Path(__file__).parent.parent / "cookies.txt"
+
+
+def _friendly_youtube_error(exc: Exception) -> str:
+    """Translate a raw yt-dlp exception into an actionable message for the UI."""
+    msg = str(exc)
+    if "Sign in" in msg or "not a bot" in msg or "cookie" in msg.lower():
+        return (
+            "YouTube is blocking this download because it suspects a bot "
+            "(this happens more often from server IPs). Add a cookies.txt file "
+            "(exported from a browser signed into YouTube) to the backend folder, "
+            "or try again with a different video."
+        )
+    if "Private video" in msg:
+        return "This video is private and can't be downloaded."
+    if "This video is unavailable" in msg:
+        return "This video is unavailable (removed, region-blocked, or age-restricted)."
+    return msg
+
+
 def _download_video(url: str, dest_dir: Path) -> Path:
     """Download a video (YouTube or Facebook) with yt-dlp.
 
     Returns the absolute Path to the downloaded file.
     """
     dest_path = dest_dir / f"{uuid.uuid4()}.%(ext)s"
-    ydl_opts = {
+    base_opts = {
         "outtmpl": str(dest_path),
         "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/b[height<=720]/18/best",
         "noplaylist": True,
@@ -26,13 +55,30 @@ def _download_video(url: str, dest_dir: Path) -> Path:
         "nocheckcertificate": True,
         "js_runtimes": {"node": {}},
         "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.5",
         },
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
+    if COOKIE_FILE.exists():
+        base_opts["cookiefile"] = str(COOKIE_FILE)
+
+    info = None
+    last_exc: Exception | None = None
+    for clients in _CLIENT_FALLBACKS:
+        ydl_opts = {**base_opts, "extractor_args": {"youtube": {"player_client": clients}}}
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+            last_exc = None
+            break
+        except Exception as exc:
+            last_exc = exc
+            continue
+
+    if last_exc is not None:
+        raise RuntimeError(_friendly_youtube_error(last_exc)) from last_exc
+
     # yt-dlp may have added an extension; locate the real file.
     pattern = dest_dir / f"{info.get('id', '*')}.*"
     matches = list(dest_dir.glob(pattern.name))
@@ -109,8 +155,24 @@ def process_short_video(url: str, max_len: int = 30) -> dict:
     trimmed_path = _trim_video(downloaded_path, max_len, short_dir)
 
     # 3. Grab title metadata for hashtags/description.
-    with yt_dlp.YoutubeDL({"quiet": True}) as ydl:
-        info = ydl.extract_info(url, download=False)
+    info_opts = {
+        "quiet": True,
+        "nocheckcertificate": True,
+        "js_runtimes": {"node": {}},
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["mweb", "ios", "android", "web"],
+            }
+        },
+    }
+    if COOKIE_FILE.exists():
+        info_opts["cookiefile"] = str(COOKIE_FILE)
+
+    try:
+        with yt_dlp.YoutubeDL(info_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except Exception:
+        info = {}
     title = info.get("title", "Untitled")
     description = info.get("description", "") or title
     hashtags = _generate_hashtags(title)
