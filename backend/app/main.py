@@ -41,21 +41,24 @@ _DEFAULT_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://viral-clip-mu.vercel.app",
 ]
 _EXTRA_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
-if "*" in _EXTRA_ORIGINS:
-    raise RuntimeError(
-        "ALLOWED_ORIGINS must not contain '*' - wildcard CORS origins are disabled. "
-        "Set a comma-separated list of exact origins instead (e.g. https://app.example.com)."
-    )
+
+if "*" in _EXTRA_ORIGINS or os.environ.get("ALLOWED_ORIGINS", "").strip() == "*":
+    cors_origins = ["*"]
+else:
+    cors_origins = list(set(_DEFAULT_ORIGINS + _EXTRA_ORIGINS))
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_DEFAULT_ORIGINS + _EXTRA_ORIGINS,
+    allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 @app.middleware("http")
