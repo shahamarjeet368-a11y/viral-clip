@@ -1,4 +1,10 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const BASE_URL = RAW_BASE.trim().replace(/\/+$/, "");
+
+function getUrl(path) {
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${BASE_URL}${cleanPath}`;
+}
 
 export async function createProject({
   file,
@@ -26,7 +32,7 @@ export async function createProject({
   if (filterName) form.append("filter_name", filterName);
   (effects || []).forEach((e) => form.append("effects", e));
 
-  const res = await fetch(`${BASE_URL}/api/projects`, { method: "POST", body: form });
+  const res = await fetch(getUrl("/api/projects"), { method: "POST", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || "Failed to create project");
@@ -35,13 +41,13 @@ export async function createProject({
 }
 
 export async function getProjects() {
-  const res = await fetch(`${BASE_URL}/api/projects`);
+  const res = await fetch(getUrl("/api/projects"));
   if (!res.ok) throw new Error("Failed to fetch history projects");
   return res.json();
 }
 
 export async function getProject(projectId) {
-  const res = await fetch(`${BASE_URL}/api/projects/${projectId}`);
+  const res = await fetch(getUrl(`/api/projects/${projectId}`));
   if (!res.ok) {
     throw new Error(
       res.status === 404
@@ -53,13 +59,13 @@ export async function getProject(projectId) {
 }
 
 export async function deleteProject(projectId) {
-  const res = await fetch(`${BASE_URL}/api/projects/${projectId}`, { method: "DELETE" });
+  const res = await fetch(getUrl(`/api/projects/${projectId}`), { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete project");
   return res.json();
 }
 
 export async function updateClip(projectId, clipId, updates) {
-  const res = await fetch(`${BASE_URL}/api/projects/${projectId}/clips/${clipId}`, {
+  const res = await fetch(getUrl(`/api/projects/${projectId}/clips/${clipId}`), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),
@@ -69,13 +75,13 @@ export async function updateClip(projectId, clipId, updates) {
 }
 
 export async function getEditOptions() {
-  const res = await fetch(`${BASE_URL}/api/edit-options`);
+  const res = await fetch(getUrl("/api/edit-options"));
   if (!res.ok) throw new Error("Failed to fetch edit options");
   return res.json();
 }
 
 export async function editClip(projectId, clipId, { filterName, effects }) {
-  const res = await fetch(`${BASE_URL}/api/projects/${projectId}/clips/${clipId}/edit`, {
+  const res = await fetch(getUrl(`/api/projects/${projectId}/clips/${clipId}/edit`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ filter_name: filterName, effects }),
@@ -88,11 +94,14 @@ export async function editClip(projectId, clipId, { filterName, effects }) {
 }
 
 export async function getMusicLibrary() {
-  const res = await fetch(`${BASE_URL}/api/music-library`);
+  const res = await fetch(getUrl("/api/music-library"));
   if (!res.ok) throw new Error("Failed to fetch music library");
   return res.json();
 }
 
 export function fileUrl(path) {
-  return `${BASE_URL}${path}`;
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return getUrl(path);
 }
+
