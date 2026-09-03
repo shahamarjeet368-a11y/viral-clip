@@ -7,4 +7,5 @@ yt-dlp
 faster-whisper
 numpy
 supabase
+slowapi
 

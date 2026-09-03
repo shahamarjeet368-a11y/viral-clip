@@ -10,6 +10,7 @@ from . import video_processor
 from . import ffmpeg_utils, seo, transcribe
 from .config import FFMPEG_BIN, OUTPUTS_DIR, UPLOADS_DIR
 from .scoring import Candidate, find_viral_clips
+from .security import validate_video_url
 from .store import Clip, Status, store
 
 _executor = ThreadPoolExecutor(max_workers=2)
@@ -21,6 +22,11 @@ def _fmt_time(seconds: float) -> str:
 
 
 def _download_youtube(url: str, project_id: str) -> Path:
+    # Defense-in-depth: main.py already validates this at the API boundary,
+    # re-checking here means this background worker never hands yt-dlp a
+    # URL from an untrusted/internal host even if some future caller of
+    # start_project() skips the HTTP layer's validation.
+    validate_video_url(url)
     out_path = UPLOADS_DIR / f"{project_id}.mp4"
 
     def on_progress(d: dict) -> None:

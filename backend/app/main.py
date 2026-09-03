@@ -4,18 +4,32 @@ import uuid
 from dataclasses import asdict
 from pathlib import Path
 
-import aiofiles
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from . import ffmpeg_utils
 from .config import MUSIC_DIR, MUSIC_TRACK_DURATION, MUSIC_TRACKS, OUTPUTS_DIR, UPLOADS_DIR, RIGHTS_DISCLAIMER
 from .pipeline import new_upload_path, start_project
+from .security import (
+    ALLOWED_AUDIO_EXTENSIONS,
+    ALLOWED_VIDEO_EXTENSIONS,
+    MAX_UPLOAD_SIZE_BYTES,
+    read_upload_with_limit,
+    validate_extension,
+    validate_video_url,
+)
 from .store import store
 
 app = FastAPI(title="ViralCut AI")
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Comma-separated extra origins (e.g. the deployed Vercel URL) via env var -
 # no credentialed cookies are used anywhere in this app, so we don't need
@@ -29,13 +43,30 @@ _DEFAULT_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 _EXTRA_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+if "*" in _EXTRA_ORIGINS:
+    raise RuntimeError(
+        "ALLOWED_ORIGINS must not contain '*' - wildcard CORS origins are disabled. "
+        "Set a comma-separated list of exact origins instead (e.g. https://app.example.com)."
+    )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_DEFAULT_ORIGINS + _EXTRA_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
 
 app.mount("/outputs", StaticFiles(directory=str(OUTPUTS_DIR)), name="outputs")
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
@@ -58,6 +89,15 @@ def _normalize_filter_and_effects(
     return name, clean_effects
 
 
+@app.get("/")
+def root():
+    return {
+        "message": "ViralCut AI Backend Server is running!",
+        "health": "/api/health",
+        "docs": "/docs"
+    }
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "disclaimer": RIGHTS_DISCLAIMER}
@@ -78,7 +118,9 @@ def music_library():
 
 
 @app.post("/api/projects")
+@limiter.limit("5/minute")
 async def create_project(
+    request: Request,
     confirm_rights: bool = Form(...),
     youtube_url: str | None = Form(None),
     video_url: str | None = Form(None),
@@ -103,6 +145,8 @@ async def create_project(
         raise HTTPException(status_code=400, detail="Provide a video file or a video URL (YouTube/Facebook).")
     if url and file:
         raise HTTPException(status_code=400, detail="Provide only one of file or video URL.")
+    if url:
+        url = validate_video_url(url)
 
     if target_duration_sec is None:
         target_duration_sec = float(target_duration_min) * 60.0
@@ -111,11 +155,9 @@ async def create_project(
 
     bg_music_path = None
     if bg_music_file and bg_music_file.filename:
-        bgm_suffix = Path(bg_music_file.filename).suffix or ".mp3"
+        bgm_suffix = validate_extension(bg_music_file.filename, ALLOWED_AUDIO_EXTENSIONS)
         bgm_dest = UPLOADS_DIR / f"bgm_{uuid.uuid4()}{bgm_suffix}"
-        async with aiofiles.open(bgm_dest, "wb") as out:
-            while chunk := await bg_music_file.read(1024 * 1024):
-                await out.write(chunk)
+        await read_upload_with_limit(bg_music_file, bgm_dest)
         bg_music_path = str(bgm_dest)
     elif bg_music_track_id:
         track_path = MUSIC_DIR / f"{bg_music_track_id}.mp3"
@@ -124,10 +166,9 @@ async def create_project(
         bg_music_path = str(track_path)
 
     if file:
+        validate_extension(file.filename or "", ALLOWED_VIDEO_EXTENSIONS)
         dest = new_upload_path(file.filename or "upload.mp4")
-        async with aiofiles.open(dest, "wb") as out:
-            while chunk := await file.read(1024 * 1024):
-                await out.write(chunk)
+        await read_upload_with_limit(file, dest)
         project_id = start_project(
             "upload",
             file.filename or dest.name,
@@ -236,7 +277,8 @@ class ClipEditRequest(BaseModel):
 
 
 @app.post("/api/projects/{project_id}/clips/{clip_id}/edit")
-def edit_clip(project_id: str, clip_id: str, edit: ClipEditRequest):
+@limiter.limit("20/minute")
+def edit_clip(request: Request, project_id: str, clip_id: str, edit: ClipEditRequest):
     project = store.get(project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")

@@ -5,6 +5,7 @@ from pathlib import Path
 import yt_dlp
 
 from .config import FFMPEG_BIN, UPLOADS_DIR
+from .security import validate_video_url
 
 
 def _download_video(url: str, dest_dir: Path) -> Path:
@@ -93,6 +94,8 @@ def process_short_video(url: str, max_len: int = 30) -> dict:
 
     Returns a dictionary with keys ``video_path`` (relative URL), ``hashtags`` (list), and ``description`` (string).
     """
+    url = validate_video_url(url)
+
     # Prepare working directories.
     temp_dir = UPLOADS_DIR / "temp"
     short_dir = UPLOADS_DIR / "shorts"
