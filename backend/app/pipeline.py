@@ -8,7 +8,7 @@ import yt_dlp
 from . import video_processor
 
 from . import ffmpeg_utils, seo, transcribe
-from .config import COOKIE_FILE, FFMPEG_BIN, OUTPUTS_DIR, UPLOADS_DIR
+from .config import BGUTIL_POT_BASE_URL, COOKIE_FILE, FFMPEG_BIN, OUTPUTS_DIR, UPLOADS_DIR
 from .scoring import Candidate, find_viral_clips
 from .security import validate_video_url
 from .store import Clip, Status, store
@@ -68,12 +68,17 @@ def _download_youtube(url: str, project_id: str) -> Path:
     if COOKIE_FILE and COOKIE_FILE.exists() and COOKIE_FILE.stat().st_size > 0:
         base_opts["cookiefile"] = str(COOKIE_FILE)
 
+    # PO Token provider: only kicks in if a bgutil HTTP server is actually
+    # reachable at this URL (see config.BGUTIL_POT_BASE_URL) - harmless no-op
+    # otherwise, so it's always safe to pass.
+    pot_extractor_args = {"youtubepot-bgutilhttp": {"base_url": [BGUTIL_POT_BASE_URL]}}
+
     last_exc: Exception | None = None
     for clients in video_processor._CLIENT_FALLBACKS:
+        extractor_args = {**pot_extractor_args}
         if clients is not None:
-            ydl_opts = {**base_opts, "extractor_args": {"youtube": {"player_client": clients}}}
-        else:
-            ydl_opts = {**base_opts}
+            extractor_args["youtube"] = {"player_client": clients}
+        ydl_opts = {**base_opts, "extractor_args": extractor_args}
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])

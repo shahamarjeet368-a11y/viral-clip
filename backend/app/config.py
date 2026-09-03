@@ -49,6 +49,15 @@ else:
             except Exception as _e:
                 print(f"[Config] Warning: Could not write YTDLP_COOKIES to {target}: {_e}")
 
+# Optional PO Token provider (bgutil-ytdlp-pot-provider, installed via
+# requirements.txt) that helps yt-dlp avoid YouTube's "not a bot" / format
+# throttling checks without needing cookies. It only does anything if an
+# actual bgutil HTTP server is reachable at this URL (e.g. the
+# brainicism/bgutil-ytdlp-pot-provider Docker image run as a second Render
+# service) - if nothing is listening there, yt-dlp logs it and continues
+# normally, so leaving this unset/unreachable is always safe.
+BGUTIL_POT_BASE_URL = os.environ.get("BGUTIL_POT_BASE_URL", "http://127.0.0.1:4416")
+
 MUSIC_TRACK_DURATION = 40  # seconds; looped by ffmpeg to cover the full clip length
 
 # Every track below is synthesized from scratch by generate_music.py (sine

@@ -4,6 +4,7 @@ python-multipart
 pydantic
 aiofiles
 yt-dlp
+bgutil-ytdlp-pot-provider
 faster-whisper
 numpy
 supabase
