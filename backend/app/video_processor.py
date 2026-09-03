@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yt_dlp
 
-from .config import FFMPEG_BIN, UPLOADS_DIR
+from .config import COOKIE_FILE, FFMPEG_BIN, UPLOADS_DIR
 from .security import validate_video_url
 
 
@@ -16,8 +16,6 @@ _CLIENT_FALLBACKS = [
     ["tv", "mweb", "android"],
     ["ios"],
 ]
-
-COOKIE_FILE = Path(__file__).parent.parent / "cookies.txt"
 
 
 def _friendly_youtube_error(exc: Exception) -> str:

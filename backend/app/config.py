@@ -1,3 +1,4 @@
+import os
 import shutil
 from pathlib import Path
 
@@ -9,6 +10,16 @@ MUSIC_DIR = STORAGE_DIR / "music"
 
 for d in (STORAGE_DIR, UPLOADS_DIR, OUTPUTS_DIR, MUSIC_DIR):
     d.mkdir(parents=True, exist_ok=True)
+
+# yt-dlp cookie file for authenticating YouTube requests (needed because
+# hosting providers' datacenter IPs get bot-blocked far more aggressively
+# than home IPs). Prefer a YTDLP_COOKIES env var (paste the cookies.txt
+# contents as a platform secret) over committing a real cookies.txt to git,
+# since that file contains a live YouTube session.
+COOKIE_FILE = BASE_DIR / "cookies.txt"
+_cookies_env = os.environ.get("YTDLP_COOKIES")
+if _cookies_env and not COOKIE_FILE.exists():
+    COOKIE_FILE.write_text(_cookies_env, encoding="utf-8")
 
 MUSIC_TRACK_DURATION = 40  # seconds; looped by ffmpeg to cover the full clip length
 
