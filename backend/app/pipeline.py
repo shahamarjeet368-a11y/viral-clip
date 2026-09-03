@@ -8,7 +8,7 @@ import yt_dlp
 from . import video_processor
 
 from . import ffmpeg_utils, seo, transcribe
-from .config import FFMPEG_BIN, OUTPUTS_DIR, UPLOADS_DIR
+from .config import COOKIE_FILE, FFMPEG_BIN, OUTPUTS_DIR, UPLOADS_DIR
 from .scoring import Candidate, find_viral_clips
 from .security import validate_video_url
 from .store import Clip, Status, store
@@ -43,7 +43,11 @@ def _download_youtube(url: str, project_id: str) -> Path:
 
     base_opts = {
         "outtmpl": str(out_path.with_suffix(".%(ext)s")),
-        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/b[height<=720]/18/best",
+        # Ends in an unrestricted "b/best" so that if the [height<=720][ext=mp4]
+        # filters don't match anything for a given player client (e.g. it only
+        # exposes webm/HLS formats), download still proceeds instead of raising
+        # "Requested format is not available".
+        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/b[height<=720]/bestvideo+bestaudio/b/best",
         "noplaylist": True,
         "quiet": True,
         "progress_hooks": [on_progress],
@@ -60,8 +64,8 @@ def _download_youtube(url: str, project_id: str) -> Path:
             "Accept-Language": "en-US,en;q=0.5",
         },
     }
-    if video_processor.COOKIE_FILE.exists():
-        base_opts["cookiefile"] = str(video_processor.COOKIE_FILE)
+    if COOKIE_FILE.exists():
+        base_opts["cookiefile"] = str(COOKIE_FILE)
 
     last_exc: Exception | None = None
     for clients in video_processor._CLIENT_FALLBACKS:

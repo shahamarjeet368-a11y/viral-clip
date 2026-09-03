@@ -13,13 +13,31 @@ for d in (STORAGE_DIR, UPLOADS_DIR, OUTPUTS_DIR, MUSIC_DIR):
 
 # yt-dlp cookie file for authenticating YouTube requests (needed because
 # hosting providers' datacenter IPs get bot-blocked far more aggressively
-# than home IPs). Prefer a YTDLP_COOKIES env var (paste the cookies.txt
-# contents as a platform secret) over committing a real cookies.txt to git,
-# since that file contains a live YouTube session.
-COOKIE_FILE = BASE_DIR / "cookies.txt"
-_cookies_env = os.environ.get("YTDLP_COOKIES")
-if _cookies_env and not COOKIE_FILE.exists():
-    COOKIE_FILE.write_text(_cookies_env, encoding="utf-8")
+# than home IPs).
+# Checks in priority order:
+# 1. /etc/secrets/cookies.txt (Render Secret File standard location)
+# 2. YTDLP_COOKIE_PATH or COOKIE_FILE_PATH env var
+# 3. Local cookies.txt in backend directory (BASE_DIR / "cookies.txt")
+# 4. Fallback: YTDLP_COOKIES env var (creates BASE_DIR / "cookies.txt")
+
+_render_secret = Path("/etc/secrets/cookies.txt")
+_custom_cookie_path = os.environ.get("YTDLP_COOKIE_PATH") or os.environ.get("COOKIE_FILE_PATH")
+_local_cookies = BASE_DIR / "cookies.txt"
+
+if _render_secret.exists():
+    COOKIE_FILE = _render_secret
+elif _custom_cookie_path and Path(_custom_cookie_path).exists():
+    COOKIE_FILE = Path(_custom_cookie_path)
+elif _local_cookies.exists():
+    COOKIE_FILE = _local_cookies
+else:
+    COOKIE_FILE = _local_cookies
+    _cookies_env = os.environ.get("YTDLP_COOKIES")
+    if _cookies_env:
+        try:
+            COOKIE_FILE.write_text(_cookies_env, encoding="utf-8")
+        except Exception as _e:
+            print(f"[Config] Warning: Could not write YTDLP_COOKIES to {COOKIE_FILE}: {_e}")
 
 MUSIC_TRACK_DURATION = 40  # seconds; looped by ffmpeg to cover the full clip length
 

@@ -43,7 +43,7 @@ def _download_video(url: str, dest_dir: Path) -> Path:
     dest_path = dest_dir / f"{uuid.uuid4()}.%(ext)s"
     base_opts = {
         "outtmpl": str(dest_path),
-        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/b[height<=720]/18/best",
+        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/b[height<=720]/bestvideo+bestaudio/b/best",
         "noplaylist": True,
         "quiet": True,
         "concurrent_fragment_downloads": 8,

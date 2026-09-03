@@ -16,7 +16,16 @@ if ENV_FILE.exists():
         print(f"[Supabase] Error loading .env file: {e}")
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY") or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+# The backend writes projects as a trusted server process, not on behalf of
+# a logged-in user, so it must use the service role key (which bypasses
+# row-level security) rather than the anon key - the anon key gets rejected
+# by any RLS policy that isn't wide open, which is what caused
+# "new row violates row-level security policy for table projects".
+SUPABASE_KEY = (
+    os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    or os.environ.get("SUPABASE_KEY")
+    or os.environ.get("SUPABASE_ANON_KEY", "")
+)
 
 _supabase_client = None
 
