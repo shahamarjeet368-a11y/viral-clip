@@ -11,7 +11,9 @@ backend/**/__pycache__/
 *.log
 *_pid.txt
 .env
+.env.example
 .env.local
+.env.*
 .claude/
 
 frontend/node_modules/
