@@ -165,14 +165,7 @@ class ProjectStore:
         default_effects: list[str] | None = None,
     ) -> Project:
         with self._lock:
-            # Check for existing project with same source to prevent duplicate history items
-            existing_pid = None
-            for p in self._projects.values():
-                if p.source_type == source_type and p.source == source:
-                    existing_pid = p.id
-                    break
-
-            pid = existing_pid or str(uuid.uuid4())
+            pid = str(uuid.uuid4())
             project = Project(
                 id=pid,
                 source_type=source_type,
@@ -200,16 +193,7 @@ class ProjectStore:
 
     def list(self) -> list[Project]:
         with self._lock:
-            sorted_projects = sorted(self._projects.values(), key=lambda p: p.created_at, reverse=True)
-            # Deduplicate by source so each project source appears exactly once in history
-            seen_sources = set()
-            unique_projects = []
-            for p in sorted_projects:
-                key = (p.source_type, p.source)
-                if key not in seen_sources:
-                    seen_sources.add(key)
-                    unique_projects.append(p)
-            return unique_projects
+            return sorted(self._projects.values(), key=lambda p: p.created_at, reverse=True)
 
     def update(self, project_id: str, **kwargs) -> None:
         with self._lock:

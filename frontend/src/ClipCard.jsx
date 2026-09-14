@@ -8,9 +8,11 @@ const TILT_RANGE = 8; // max degrees of 3D tilt on hover
 export default function ClipCard({ projectId, clip, index = 0 }) {
   const [localClip, setLocalClip] = useState(clip);
   const [platform, setPlatform] = useState("instagram");
-  const [title, setTitle] = useState(clip.seo.selected_title || clip.seo.titles[0]);
-  const [description, setDescription] = useState(clip.seo.description);
-  const [hashtagsText, setHashtagsText] = useState(clip.seo.hashtags[platform].join(" "));
+  const [title, setTitle] = useState(clip?.seo?.selected_title || clip?.seo?.titles?.[0] || "");
+  const [description, setDescription] = useState(clip?.seo?.description || "");
+  const [hashtagsText, setHashtagsText] = useState(
+    (clip?.seo?.hashtags?.instagram || []).join(" ")
+  );
   const [saved, setSaved] = useState(false);
   const [viewMode, setViewMode] = useState("video");
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -31,7 +33,9 @@ export default function ClipCard({ projectId, clip, index = 0 }) {
 
   useEffect(() => {
     getEditOptions()
-      .then(setEditOptions)
+      .then((opts) => {
+        if (opts && opts.filters) setEditOptions(opts);
+      })
       .catch(() => {});
   }, []);
 
@@ -62,6 +66,7 @@ export default function ClipCard({ projectId, clip, index = 0 }) {
   }
 
   function handleMouseMove(e) {
+    if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width - 0.5;
     const py = (e.clientY - rect.top) / rect.height - 0.5;
@@ -74,13 +79,15 @@ export default function ClipCard({ projectId, clip, index = 0 }) {
 
   function switchPlatform(p) {
     setPlatform(p);
-    setHashtagsText(clip.seo.hashtags[p].join(" "));
+    const tags = localClip?.seo?.hashtags?.[p] || clip?.seo?.hashtags?.[p] || [];
+    setHashtagsText(tags.join(" "));
     setSaved(false);
   }
 
   async function handleSave() {
-    const hashtags = { ...clip.seo.hashtags, [platform]: hashtagsText.split(/\s+/).filter(Boolean) };
-    await updateClip(projectId, clip.id, { title, description, hashtags });
+    const existingHashtags = localClip?.seo?.hashtags || clip?.seo?.hashtags || {};
+    const hashtags = { ...existingHashtags, [platform]: hashtagsText.split(/\s+/).filter(Boolean) };
+    await updateClip(projectId, localClip.id, { title, description, hashtags });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }

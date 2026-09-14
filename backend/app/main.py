@@ -43,14 +43,8 @@ _DEFAULT_ORIGINS = [
     "http://127.0.0.1:3000",
     "https://viral-clip-mu.vercel.app",
 ]
-_EXTRA_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+_EXTRA_ORIGINS = [o.strip().strip("'\"") for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
 if "*" in _EXTRA_ORIGINS:
-    raise RuntimeError(
-        "ALLOWED_ORIGINS must not contain '*' - wildcard CORS origins are disabled. "
-        "Set a comma-separated list of exact origins instead (e.g. https://app.example.com)."
-    )
-
-if "*" in _EXTRA_ORIGINS or os.environ.get("ALLOWED_ORIGINS", "").strip() == "*":
     cors_origins = ["*"]
 else:
     cors_origins = list(set(_DEFAULT_ORIGINS + _EXTRA_ORIGINS))

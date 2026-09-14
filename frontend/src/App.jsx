@@ -318,8 +318,7 @@ function App() {
   }
 
   const uniqueHistoryList = historyList.filter(
-    (item, index, self) =>
-      index === self.findIndex((t) => t.source_type === item.source_type && t.source === item.source)
+    (item, index, self) => index === self.findIndex((t) => t.id === item.id)
   );
 
   const isActive = project && ACTIVE_STATUSES.includes(project.status);
