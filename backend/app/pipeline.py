@@ -57,6 +57,7 @@ def _download_youtube(url: str, project_id: str) -> Path:
         "retries": 10,
         "source_address": "0.0.0.0",
         "js_runtimes": {"node": {}},
+        "remote_components": ["ejs:github"],
         "concurrent_fragment_downloads": 8,
         "http_chunk_size": 10 * 1024 * 1024,
         "http_headers": {
@@ -73,7 +74,7 @@ def _download_youtube(url: str, project_id: str) -> Path:
     # otherwise, so it's always safe to pass.
     pot_extractor_args = {"youtubepot-bgutilhttp": {"base_url": [BGUTIL_POT_BASE_URL]}}
 
-    last_exc: Exception | None = None
+    attempt_excs: list[Exception] = []
     for clients in video_processor._CLIENT_FALLBACKS:
         extractor_args = {**pot_extractor_args}
         if clients is not None:
@@ -82,14 +83,15 @@ def _download_youtube(url: str, project_id: str) -> Path:
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
-            last_exc = None
+            attempt_excs = []
             break
         except Exception as exc:
-            last_exc = exc
+            attempt_excs.append(exc)
             continue
 
-    if last_exc is not None:
-        raise RuntimeError(video_processor._friendly_youtube_error(last_exc)) from last_exc
+    if attempt_excs:
+        exc = video_processor.best_error(attempt_excs)
+        raise RuntimeError(video_processor._friendly_youtube_error(exc)) from exc
 
     if not out_path.exists():
         candidates = list(UPLOADS_DIR.glob(f"{project_id}.*"))

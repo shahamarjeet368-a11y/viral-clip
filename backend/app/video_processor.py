@@ -12,9 +12,10 @@ from .security import validate_video_url
 # PO-token requirements vary per client and change over time, so we fall
 # back through several combinations rather than giving up after one.
 _CLIENT_FALLBACKS = [
-    ["mweb", "ios", "android", "web"],
-    ["ios", "android"],
-    ["mweb", "android"],
+    ["web", "android", "mweb"],
+    ["tv_embedded", "web", "mweb"],
+    ["android", "mweb"],
+    ["web"],
     None,
 ]
 
@@ -40,6 +41,28 @@ def _friendly_youtube_error(exc: Exception) -> str:
     return msg
 
 
+def _error_specificity(exc: Exception) -> int:
+    """Rank how actionable/diagnostic an exception's message is.
+
+    Used to pick which failed client-fallback attempt to report when *all*
+    of them fail: a bot-check or "private video" message is far more useful
+    to the user than a generic "unavailable" one, but the fallback loop
+    tries several client combos and the specific error can show up on an
+    earlier attempt while a later, less specific one is what's raised last.
+    """
+    msg = str(exc)
+    if "Sign in" in msg or "not a bot" in msg or "cookie" in msg.lower() or "Private video" in msg:
+        return 2
+    if "unavailable" in msg.lower() or "failed to extract" in msg.lower() or "does not exist" in msg.lower():
+        return 0
+    return 1
+
+
+def best_error(excs: list[Exception]) -> Exception:
+    """Pick the most actionable exception out of a list of fallback-attempt failures."""
+    return max(excs, key=_error_specificity)
+
+
 def _download_video(url: str, dest_dir: Path) -> Path:
     """Download a video (YouTube or Facebook) with yt-dlp.
 
@@ -58,6 +81,7 @@ def _download_video(url: str, dest_dir: Path) -> Path:
         "source_address": "0.0.0.0",
         "nocheckcertificate": True,
         "js_runtimes": {"node": {}},
+        "remote_components": ["ejs:github"],
         "http_headers": {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -73,7 +97,8 @@ def _download_video(url: str, dest_dir: Path) -> Path:
     pot_extractor_args = {"youtubepot-bgutilhttp": {"base_url": [BGUTIL_POT_BASE_URL]}}
 
     info = None
-    last_exc: Exception | None = None
+    attempt_excs: list[Exception] = []
+    stem = dest_path.stem
     for clients in _CLIENT_FALLBACKS:
         extractor_args = {**pot_extractor_args}
         if clients is not None:
@@ -82,18 +107,19 @@ def _download_video(url: str, dest_dir: Path) -> Path:
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-            last_exc = None
+            attempt_excs = []
             break
         except Exception as exc:
-            last_exc = exc
+            attempt_excs.append(exc)
             continue
 
-    if last_exc is not None:
-        raise RuntimeError(_friendly_youtube_error(last_exc)) from last_exc
+    if attempt_excs:
+        exc = best_error(attempt_excs)
+        raise RuntimeError(_friendly_youtube_error(exc)) from exc
 
-    # yt-dlp may have added an extension; locate the real file.
-    pattern = dest_dir / f"{info.get('id', '*')}.*"
-    matches = list(dest_dir.glob(pattern.name))
+    # yt-dlp may have added an extension; locate the real file (named after
+    # the uuid stem passed as the outtmpl, not the video's own id).
+    matches = list(dest_dir.glob(f"{stem}.*"))
     if not matches:
         raise RuntimeError("Video download failed – no file found.")
     return matches[0]
@@ -171,10 +197,11 @@ def process_short_video(url: str, max_len: int = 30) -> dict:
         "quiet": True,
         "nocheckcertificate": True,
         "js_runtimes": {"node": {}},
+        "remote_components": ["ejs:github"],
         "source_address": "0.0.0.0",
         "extractor_args": {
             "youtube": {
-                "player_client": ["tv_embedded", "android_vr", "ios", "mweb"],
+                "player_client": ["web", "android", "mweb"],
             }
         },
     }
