@@ -6,6 +6,20 @@ function getUrl(path) {
   return `${BASE_URL}${cleanPath}`;
 }
 
+async function safeFetch(url, options = {}) {
+  try {
+    const res = await fetch(url, options);
+    return res;
+  } catch (err) {
+    if (err.name === "TypeError" || err.message.includes("fetch")) {
+      throw new Error(
+        "Could not connect to backend server. Render free tier may be spinning up from sleep mode (cold start takes ~40s), or VITE_API_BASE_URL is incorrect. Please wait 10 seconds and click 'Try again'."
+      );
+    }
+    throw err;
+  }
+}
+
 export async function createProject({
   file,
   videoUrl,
@@ -32,7 +46,7 @@ export async function createProject({
   if (filterName) form.append("filter_name", filterName);
   (effects || []).forEach((e) => form.append("effects", e));
 
-  const res = await fetch(getUrl("/api/projects"), { method: "POST", body: form });
+  const res = await safeFetch(getUrl("/api/projects"), { method: "POST", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || "Failed to create project");
@@ -41,13 +55,13 @@ export async function createProject({
 }
 
 export async function getProjects() {
-  const res = await fetch(getUrl("/api/projects"));
+  const res = await safeFetch(getUrl("/api/projects"));
   if (!res.ok) throw new Error("Failed to fetch history projects");
   return res.json();
 }
 
 export async function getProject(projectId) {
-  const res = await fetch(getUrl(`/api/projects/${projectId}`));
+  const res = await safeFetch(getUrl(`/api/projects/${projectId}`));
   if (!res.ok) {
     throw new Error(
       res.status === 404
