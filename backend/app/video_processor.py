@@ -23,12 +23,10 @@ _CLIENT_FALLBACKS = [
 def _friendly_youtube_error(exc: Exception) -> str:
     """Translate a raw yt-dlp exception into an actionable message for the UI."""
     msg = str(exc)
-    if "Sign in" in msg or "not a bot" in msg or "cookie" in msg.lower():
+    if "Sign in" in msg or "not a bot" in msg or "cookie" in msg.lower() or "bot" in msg.lower() or "confirm" in msg.lower():
         return (
-            "YouTube is blocking this download because it suspects a bot "
-            "(this happens more often from server IPs). Please add a cookies.txt Secret File "
-            "(exported from a browser signed into YouTube) on Render at /etc/secrets/cookies.txt, "
-            "or try again with a different video."
+            "YouTube is blocking this server IP. Please ensure the cookies.txt Secret File "
+            "is linked directly to your Render Web Service ('viral-clip'), or use the 'Upload file' tab to upload the video file directly."
         )
     if "Private video" in msg:
         return "This video is private and can't be downloaded."
@@ -36,8 +34,12 @@ def _friendly_youtube_error(exc: Exception) -> str:
         "unavailable" in msg.lower()
         or "failed to extract" in msg.lower()
         or "does not exist" in msg.lower()
+        or "format is not available" in msg.lower()
     ):
-        return "This video is unavailable (it may be deleted, private, region-blocked, or the URL is invalid)."
+        return (
+            "YouTube blocked extraction for this URL on server IP. "
+            "Please upload the video file directly using the 'Upload file' tab, or verify cookies.txt on Render."
+        )
     return msg
 
 
