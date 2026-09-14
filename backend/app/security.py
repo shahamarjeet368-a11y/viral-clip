@@ -73,6 +73,17 @@ TRUSTED_VIDEO_HOSTS = {
     "www.facebook.com",
     "m.facebook.com",
     "fb.watch",
+    "instagram.com",
+    "www.instagram.com",
+    "tiktok.com",
+    "www.tiktok.com",
+    "vm.tiktok.com",
+    "twitter.com",
+    "www.twitter.com",
+    "x.com",
+    "www.x.com",
+    "vimeo.com",
+    "player.vimeo.com",
 }
 
 
@@ -85,17 +96,15 @@ def _is_ip_literal(host: str) -> bool:
 
 
 def validate_video_url(url: str) -> str:
-    """Raise HTTP 400 unless `url` is a plain http(s) URL on a trusted domain.
-
-    Defends against SSRF via the "video URL" field: rejects non-http(s)
-    schemes (file://, gopher://, etc), embedded credentials, raw IP literals
-    (blocks direct hits on internal/link-local/metadata addresses like
-    169.254.169.254), and any host not on the explicit allow-list.
-    """
+    """Raise HTTP 400 unless `url` is a plain http(s) URL on a trusted domain."""
     if not url or len(url) > 2048:
         raise HTTPException(status_code=400, detail="Invalid video URL.")
 
-    parts = urlsplit(url.strip())
+    clean_url = url.strip()
+    if not clean_url.startswith(("http://", "https://")):
+        clean_url = f"https://{clean_url}"
+
+    parts = urlsplit(clean_url)
 
     if parts.scheme not in ("http", "https"):
         raise HTTPException(status_code=400, detail="Video URL must use http or https.")
@@ -110,13 +119,13 @@ def validate_video_url(url: str) -> str:
     if _is_ip_literal(host):
         raise HTTPException(status_code=400, detail="Video URL must be a domain name, not an IP address.")
 
-    if host not in TRUSTED_VIDEO_HOSTS:
+    if not any(host == trusted or host.endswith("." + trusted) for trusted in TRUSTED_VIDEO_HOSTS):
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported video source '{host}'. Only YouTube and Facebook URLs are accepted.",
+            detail=f"Unsupported video source '{host}'. Supported platforms: YouTube, Facebook, Instagram, TikTok, Twitter/X, Vimeo.",
         )
 
-    return url.strip()
+    return clean_url
 
 
 def resolves_to_public_address(host: str) -> bool:

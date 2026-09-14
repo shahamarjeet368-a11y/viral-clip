@@ -429,8 +429,8 @@ function App() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      type="url"
-                      placeholder="Paste YouTube or Facebook video URL..."
+                      type="text"
+                      placeholder="Paste YouTube, Shorts, Facebook, Instagram, or TikTok video link..."
                       value={videoUrl}
                       onChange={(e) => {
                         setVideoUrl(e.target.value);
