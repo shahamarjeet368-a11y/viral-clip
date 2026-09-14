@@ -13,8 +13,8 @@ from fastapi import HTTPException
 
 # --- File upload validation ------------------------------------------------
 
-ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi"}
-ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav"}
+ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".webm", ".mkv", ".m4v", ".flv"}
+ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".aac", ".ogg"}
 
 MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024  # 500MB
 

@@ -417,7 +417,10 @@ function App() {
                       exit={{ opacity: 0 }}
                       type="file"
                       accept="video/*"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      onChange={(e) => {
+                        setFile(e.target.files?.[0] || null);
+                        setSubmitError(null);
+                      }}
                       className="field-input"
                     />
                   ) : (
@@ -429,7 +432,10 @@ function App() {
                       type="url"
                       placeholder="Paste YouTube or Facebook video URL..."
                       value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
+                      onChange={(e) => {
+                        setVideoUrl(e.target.value);
+                        setSubmitError(null);
+                      }}
                       className="field-input"
                     />
                   )}
