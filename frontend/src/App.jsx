@@ -346,10 +346,26 @@ function App() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
+        <div className="hero-badge">
+          <span className="hero-badge-dot"></span>
+          <span>Next-Gen Viral Shorts Generator</span>
+        </div>
+
+        <div className="hero-visual-centerpiece">
+          <motion.div
+            className="hero-orb-frame"
+            animate={{ y: [0, -8, 0], scale: [1, 1.03, 1] }}
+            transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+          >
+            <img src="/cosmic-bg.jpg" alt="ViralCut AI Core Engine" className="hero-orb-img" />
+            <div className="hero-orb-glow-ring"></div>
+          </motion.div>
+        </div>
+
         <h1>
           ViralCut <span className="accent-text">AI</span>
         </h1>
-        <p>Paste a video, get ranked viral-worthy clips with captions and SEO baked in.</p>
+        <p>Turn long videos into ranked, 9:16 viral shorts with burned-in subtitles and SEO in seconds.</p>
 
         <nav className="main-nav">
           <button
