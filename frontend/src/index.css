@@ -1,19 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
-  --bg: #0a0e17;
-  --bg-card: rgba(255, 255, 255, 0.025);
-  --bg-input: rgba(0, 0, 0, 0.35);
-  --text: #aab1c4;
+  --bg: #050814;
+  --bg-card: rgba(10, 15, 36, 0.72);
+  --bg-input: rgba(4, 7, 20, 0.75);
+  --text: #cbd5e1;
   --text-h: #ffffff;
-  --text-muted: #7c8399;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-focus: #3b6ef6;
+  --text-muted: #94a3b8;
+  --border: rgba(0, 242, 254, 0.22);
+  --border-focus: #00f2fe;
 
-  --accent: #3b6ef6;
-  --accent-hover: #2f5ce0;
-  --accent-grad: #3b6ef6;
-  --accent-grad-hover: #2f5ce0;
+  --accent: #00f2fe;
+  --accent-hover: #00d2fe;
+  --accent-grad: linear-gradient(135deg, #00f2fe 0%, #4facfe 45%, #7f00ff 100%);
+  --accent-grad-hover: linear-gradient(135deg, #00d2fe 0%, #3b82f6 50%, #9333ea 100%);
+  --fire-grad: linear-gradient(135deg, #ff512f 0%, #dd2476 100%);
+
+  --glow-cyan: 0 0 25px rgba(0, 242, 254, 0.35);
+  --glow-purple: 0 0 35px rgba(127, 0, 255, 0.35);
+  --glow-orange: 0 0 30px rgba(255, 81, 47, 0.35);
 
   --sans: 'Outfit', system-ui, -apple-system, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -30,23 +35,96 @@
 }
 
 body.theme-light {
-  --bg: #f4f6fb;
-  --bg-card: rgba(255, 255, 255, 0.9);
-  --bg-input: #ffffff;
-  --text: #4b5162;
-  --text-h: #10131c;
-  --text-muted: #767c8e;
-  --border: rgba(15, 20, 35, 0.1);
-  --border-focus: #3b6ef6;
-  color-scheme: light;
+  --bg: #0a0e23;
+  --bg-card: rgba(18, 26, 56, 0.85);
+  --bg-input: rgba(10, 15, 36, 0.85);
+  --text: #e2e8f0;
+  --text-h: #ffffff;
+  --text-muted: #cbd5e1;
+  --border: rgba(0, 242, 254, 0.3);
+  --border-focus: #00f2fe;
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
-  transition: background 0.25s ease;
+  background-color: var(--bg);
+  transition: background 0.3s ease;
   overflow-x: hidden;
+  position: relative;
+}
+
+/* --- Animated Cosmic Plasma Background Layer --- */
+body::before {
+  content: "";
+  position: fixed;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  background: 
+    radial-gradient(circle at 50% 40%, rgba(0, 242, 254, 0.12) 0%, rgba(127, 0, 255, 0.15) 35%, rgba(5, 8, 20, 0.88) 80%),
+    url('/cosmic-bg.jpg') no-repeat center center / cover;
+  z-index: -2;
+  filter: brightness(0.85) contrast(1.15);
+  animation: cosmicOrbPulse 22s ease-in-out infinite alternate, cosmicRotate 90s linear infinite;
+  transform-origin: center center;
+}
+
+/* Ambient Plasma Glow Overlay */
+body::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(0, 242, 254, 0.18), transparent 45%),
+    radial-gradient(circle at 80% 30%, rgba(255, 81, 47, 0.16), transparent 50%),
+    radial-gradient(circle at 50% 80%, rgba(127, 0, 255, 0.2), transparent 50%);
+  z-index: -1;
+  pointer-events: none;
+  animation: plasmaGlowShift 14s ease-in-out infinite alternate;
+}
+
+@keyframes cosmicOrbPulse {
+  0% {
+    transform: scale(1) translateY(0px);
+    filter: brightness(0.82) contrast(1.1);
+  }
+  50% {
+    transform: scale(1.06) translateY(-10px);
+    filter: brightness(0.95) contrast(1.25);
+  }
+  100% {
+    transform: scale(1.02) translateY(8px);
+    filter: brightness(0.88) contrast(1.18);
+  }
+}
+
+@keyframes cosmicRotate {
+  0% {
+    transform: rotate(0deg) scale(1.04);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.08);
+  }
+  100% {
+    transform: rotate(360deg) scale(1.04);
+  }
+}
+
+@keyframes plasmaGlowShift {
+  0% {
+    opacity: 0.7;
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    opacity: 1;
+    filter: hue-rotate(25deg);
+  }
 }
 
 #root {
@@ -56,6 +134,8 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -72,18 +152,18 @@ p {
 code {
   font-family: var(--mono);
   border-radius: 6px;
-  color: #a78bfa;
+  color: #00f2fe;
   font-size: 14px;
   padding: 2px 6px;
-  background: rgba(139, 92, 246, 0.1);
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  background: rgba(0, 242, 254, 0.1);
+  border: 1px solid rgba(0, 242, 254, 0.25);
 }
 
 * {
   box-sizing: border-box;
 }
 
-/* Custom Scrollbar */
+/* Custom Cosmic Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -94,11 +174,11 @@ code {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, #00f2fe, #7f00ff);
   border-radius: 999px;
   border: 2px solid var(--bg);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: linear-gradient(180deg, #00f2fe, #ff512f);
 }
