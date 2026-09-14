@@ -325,6 +325,18 @@ function App() {
 
   return (
     <div className="app">
+      {/* Full-screen Background Plasma Layer */}
+      <div className="full-cosmic-bg-layer">
+        <motion.img
+          src="/cosmic-bg.jpg"
+          alt="Cosmic Plasma Background"
+          className="full-cosmic-bg-img"
+          animate={{ scale: [1, 1.05, 1], rotate: [0, 3, 0] }}
+          transition={{ repeat: Infinity, duration: 18, ease: "easeInOut" }}
+        />
+        <div className="full-cosmic-bg-overlay"></div>
+      </div>
+
       <div className="topbar">
         <div className="brand">
           <span className="brand-mark">▶</span>
@@ -349,17 +361,6 @@ function App() {
         <div className="hero-badge">
           <span className="hero-badge-dot"></span>
           <span>Next-Gen Viral Shorts Generator</span>
-        </div>
-
-        <div className="hero-visual-centerpiece">
-          <motion.div
-            className="hero-orb-frame"
-            animate={{ y: [0, -8, 0], scale: [1, 1.03, 1] }}
-            transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-          >
-            <img src="/cosmic-bg.jpg" alt="ViralCut AI Core Engine" className="hero-orb-img" />
-            <div className="hero-orb-glow-ring"></div>
-          </motion.div>
         </div>
 
         <h1>
