@@ -12,9 +12,9 @@ from .security import validate_video_url
 # PO-token requirements vary per client and change over time, so we fall
 # back through several combinations rather than giving up after one.
 _CLIENT_FALLBACKS = [
-    ["web", "android", "mweb"],
+    ["android", "web"],
+    ["mweb", "android"],
     ["tv_embedded", "web", "mweb"],
-    ["android", "mweb"],
     ["web"],
     None,
 ]
@@ -71,7 +71,7 @@ def _download_video(url: str, dest_dir: Path) -> Path:
     dest_path = dest_dir / f"{uuid.uuid4()}.%(ext)s"
     base_opts = {
         "outtmpl": str(dest_path),
-        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/b[height<=720]/bestvideo+bestaudio/b/best",
+        "format": "bestvideo[height<=720]+bestaudio/b[height<=720]/bestvideo+bestaudio/b/best",
         "noplaylist": True,
         "quiet": True,
         "concurrent_fragment_downloads": 8,
@@ -80,8 +80,6 @@ def _download_video(url: str, dest_dir: Path) -> Path:
         "socket_timeout": 15,
         "source_address": "0.0.0.0",
         "nocheckcertificate": True,
-        "js_runtimes": {"node": {}},
-        "remote_components": ["ejs:github"],
         "http_headers": {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

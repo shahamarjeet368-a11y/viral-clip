@@ -43,11 +43,7 @@ def _download_youtube(url: str, project_id: str) -> Path:
 
     base_opts = {
         "outtmpl": str(out_path.with_suffix(".%(ext)s")),
-        # Ends in an unrestricted "b/best" so that if the [height<=720][ext=mp4]
-        # filters don't match anything for a given player client (e.g. it only
-        # exposes webm/HLS formats), download still proceeds instead of raising
-        # "Requested format is not available".
-        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/b[height<=720]/bestvideo+bestaudio/b/best",
+        "format": "bestvideo[height<=720]+bestaudio/b[height<=720]/bestvideo+bestaudio/b/best",
         "noplaylist": True,
         "quiet": True,
         "progress_hooks": [on_progress],
@@ -56,8 +52,6 @@ def _download_youtube(url: str, project_id: str) -> Path:
         "socket_timeout": 15,
         "retries": 10,
         "source_address": "0.0.0.0",
-        "js_runtimes": {"node": {}},
-        "remote_components": ["ejs:github"],
         "concurrent_fragment_downloads": 8,
         "http_chunk_size": 10 * 1024 * 1024,
         "http_headers": {
